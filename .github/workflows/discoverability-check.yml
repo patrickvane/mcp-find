@@ -1,0 +1,88 @@
+name: Discoverability Check
+
+# Trigger on Vercel deployment_status events so we verify the live deployed HTML,
+# not a locally-built artifact. Vercel cold builds take 3-5 min, so a fixed sleep
+# on `push` would produce flaky failures.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  tag-check:
+    # Only run when Vercel marks a Production deployment as successful.
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'Production'
+
+    name: Verify GA4 + Clarity tags in deployed HTML
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Homepage ──────────────────────────────────────────────────────────
+      - name: Fetch homepage HTML
+        run: |
+          curl -sf --retry 3 --retry-delay 5 \
+            -A "Mozilla/5.0 (CI discoverability-check)" \
+            -o /tmp/homepage.html \
+            https://mcpfind.org/
+          echo "Homepage fetched ($(wc -c < /tmp/homepage.html) bytes)"
+
+      - name: Check GA4 tag on homepage
+        env:
+          GA4_MEASUREMENT_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
+        run: |
+          if grep -qF "${GA4_MEASUREMENT_ID}" /tmp/homepage.html; then
+            echo "GA4 tag found on homepage (${GA4_MEASUREMENT_ID})"
+          else
+            echo "::error::GA4 tag (${GA4_MEASUREMENT_ID}) MISSING from homepage HTML"
+            exit 1
+          fi
+
+      - name: Check Clarity tag on homepage
+        env:
+          CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
+        run: |
+          if grep -qF "${CLARITY_PROJECT_ID}" /tmp/homepage.html; then
+            echo "Clarity tag found on homepage (${CLARITY_PROJECT_ID})"
+          else
+            echo "::error::Clarity tag (${CLARITY_PROJECT_ID}) MISSING from homepage HTML"
+            exit 1
+          fi
+
+      # ── Representative blog page ──────────────────────────────────────────
+      # Using the most recently added blog post as a representative page.
+      # This slug was the last MDX added (2026-05-13 batch).
+      - name: Fetch representative blog page HTML
+        run: |
+          curl -sf --retry 3 --retry-delay 5 \
+            -A "Mozilla/5.0 (CI discoverability-check)" \
+            -o /tmp/blog.html \
+            https://mcpfind.org/blog/github-mcp-server-claude-code-tutorial
+          echo "Blog page fetched ($(wc -c < /tmp/blog.html) bytes)"
+
+      - name: Check GA4 tag on blog page
+        env:
+          GA4_MEASUREMENT_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
+        run: |
+          if grep -qF "${GA4_MEASUREMENT_ID}" /tmp/blog.html; then
+            echo "GA4 tag found on blog page (${GA4_MEASUREMENT_ID})"
+          else
+            echo "::error::GA4 tag (${GA4_MEASUREMENT_ID}) MISSING from blog page HTML"
+            exit 1
+          fi
+
+      - name: Check Clarity tag on blog page
+        env:
+          CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
+        run: |
+          if grep -qF "${CLARITY_PROJECT_ID}" /tmp/blog.html; then
+            echo "Clarity tag found on blog page (${CLARITY_PROJECT_ID})"
+          else
+            echo "::error::Clarity tag (${CLARITY_PROJECT_ID}) MISSING from blog page HTML"
+            exit 1
+          fi
