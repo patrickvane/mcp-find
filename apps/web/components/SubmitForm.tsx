@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { IconBrandGithub, IconArrowUpRight } from "@tabler/icons-react";
 import { CATEGORIES, CATEGORY_LABELS } from "@mcpfind/shared";
 import {
@@ -17,17 +17,17 @@ const INPUT_BASE =
   "w-full bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 rounded-xl px-4 py-3 text-sm outline-none transition-colors duration-150 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50";
 const INPUT_ERROR = "border-red-500/60 focus:border-red-500 focus:ring-red-500/30";
 
-const INITIAL_FIELDS: FormFields = {
+const INITIAL_FIELDS = {
   name: "",
   github_url: "",
   package_name: "",
   description: "",
-  package_type: "",
-  category: "",
-};
+  package_type: "" as const,
+  category: "" as const,
+} satisfies FormFields;
 
 export function SubmitForm() {
-  const [fields, setFields] = useState<FormFields>(INITIAL_FIELDS);
+  const [fields, setFields] = useState<FormFields>({ ...INITIAL_FIELDS });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<keyof FormFields>>(new Set());
   // Fix #6: submitted state for button disable UX
@@ -36,14 +36,22 @@ export function SubmitForm() {
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   // Success state: shown after window.open succeeds
   const [success, setSuccess] = useState(false);
+  // Fix 1: synchronous double-submit guard
+  const submitting = useRef(false);
+  // Fix 4: focus restore after reset
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   function handleReset() {
-    setFields(INITIAL_FIELDS);
+    setFields({ ...INITIAL_FIELDS });
     setErrors({});
     setTouched(new Set());
     setSubmitted(false);
     setFallbackUrl(null);
     setSuccess(false);
+    submitting.current = false;
+    requestAnimationFrame(() => {
+      nameInputRef.current?.focus();
+    });
   }
 
   function setField<K extends keyof FormFields>(key: K, value: FormFields[K]) {
@@ -68,39 +76,46 @@ export function SubmitForm() {
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Fix #6: mark submitted so button disable logic activates
-    setSubmitted(true);
+    // Fix 1: synchronous double-submit guard
+    if (submitting.current) return;
+    submitting.current = true;
+    try {
+      // Fix #6: mark submitted so button disable logic activates
+      setSubmitted(true);
 
-    const fieldErrors = validate(fields);
-    setErrors(fieldErrors);
-    // Mark all as touched so errors show
-    setTouched(new Set(Object.keys(fields) as Array<keyof FormFields>));
+      const fieldErrors = validate(fields);
+      setErrors(fieldErrors);
+      // Mark all as touched so errors show
+      setTouched(new Set(Object.keys(fields) as Array<keyof FormFields>));
 
-    if (Object.keys(fieldErrors).length > 0) return;
+      if (Object.keys(fieldErrors).length > 0) return;
 
-    // Trim all string fields so clipboard-pasted whitespace never leaks into the YAML.
-    const trimmed: FormFields = {
-      name: fields.name.trim(),
-      github_url: fields.github_url.trim(),
-      package_name: fields.package_name.trim(),
-      description: fields.description.trim(),
-      package_type: fields.package_type, // select value, no trim needed
-      category: fields.category,         // select value, no trim needed
-    };
+      // Trim all string fields so clipboard-pasted whitespace never leaks into the YAML.
+      const trimmed: FormFields = {
+        name: fields.name.trim(),
+        github_url: fields.github_url.trim(),
+        package_name: fields.package_name.trim(),
+        description: fields.description.trim(),
+        package_type: fields.package_type, // select value, no trim needed
+        category: fields.category,         // select value, no trim needed
+      };
 
-    // Fix 3: slug is now guaranteed non-empty by validate()
-    const slug = toSlug(trimmed.name);
+      // Fix 3: slug is now guaranteed non-empty by validate()
+      const slug = toSlug(trimmed.name);
 
-    const yaml = buildYaml(trimmed);
-    const encoded = encodeURIComponent(yaml);
-    const url = `https://github.com/MCPFind/mcp-find/new/main?filename=submissions/${slug}.yml&value=${encoded}`;
+      const yaml = buildYaml(trimmed);
+      const encoded = encodeURIComponent(yaml);
+      const url = `https://github.com/MCPFind/mcp-find/new/main?filename=submissions/${slug}.yml&value=${encoded}`;
 
-    // Fix #3 & #10: noopener,noreferrer + popup-blocker fallback
-    const win = window.open(url, "_blank", "noopener,noreferrer");
-    if (win) {
-      setSuccess(true);
-    } else {
-      setFallbackUrl(url);
+      // Fix #3 & #10: noopener,noreferrer + popup-blocker fallback
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (win) {
+        setSuccess(true);
+      } else {
+        setFallbackUrl(url);
+      }
+    } finally {
+      submitting.current = false;
     }
   }
 
@@ -109,11 +124,11 @@ export function SubmitForm() {
 
   if (success) {
     return (
-      <div className="rounded-xl border border-blue-700/40 bg-blue-950/30 p-6 text-center space-y-4">
-        <h3 className="text-lg font-medium text-blue-200">
+      <div className="rounded-xl border border-green-700/40 bg-green-950/30 p-6 text-center space-y-4">
+        <h3 className="text-lg font-medium text-green-200">
           Thanks! Your submission is open in a new tab.
         </h3>
-        <p className="text-sm text-blue-200/80">
+        <p className="text-sm text-green-200/80">
           Complete the PR on GitHub to add your server to the directory. We&apos;ll review it within a few days.
         </p>
         <button
@@ -136,6 +151,7 @@ export function SubmitForm() {
         </label>
         {/* Fix #4 a11y + Fix #8 maxLength */}
         <input
+          ref={nameInputRef}
           id="sf-name"
           type="text"
           placeholder="e.g. My Awesome MCP Server"

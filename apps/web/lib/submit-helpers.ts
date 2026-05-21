@@ -20,7 +20,7 @@ export interface FormErrors {
 }
 
 export const PACKAGE_TYPES = ["npm", "pypi", "docker", ""] as const;
-type PackageType = (typeof PACKAGE_TYPES)[number];
+export type PackageType = (typeof PACKAGE_TYPES)[number];
 
 export function isPackageType(v: string): v is PackageType {
   return (PACKAGE_TYPES as readonly string[]).includes(v);

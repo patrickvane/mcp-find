@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { CATEGORIES } from "@mcpfind/shared";
 import {
   toSlug,
   buildYaml,
@@ -262,14 +263,7 @@ describe("validate", () => {
     });
 
     it("accepts all valid category values without errors", () => {
-      const validCategories = [
-        "databases", "cloud", "monitoring", "security", "testing",
-        "analytics", "automation", "media", "documentation", "social",
-        "ecommerce", "devtools", "communication", "filesystems", "search",
-        "ai-ml", "finance", "crm", "productivity", "maps", "other",
-      ] as const;
-
-      for (const cat of validCategories) {
+      for (const cat of CATEGORIES) {
         const errors = validate(validFields({ category: cat }));
         expect(errors.category, `category "${cat}" should not error`).toBeUndefined();
       }
@@ -429,13 +423,7 @@ describe("isCategory", () => {
   });
 
   it("returns true for every known category", () => {
-    const knownCategories = [
-      "databases", "cloud", "monitoring", "security", "testing",
-      "analytics", "automation", "media", "documentation", "social",
-      "ecommerce", "devtools", "communication", "filesystems", "search",
-      "ai-ml", "finance", "crm", "productivity", "maps", "other",
-    ];
-    for (const cat of knownCategories) {
+    for (const cat of CATEGORIES) {
       expect(isCategory(cat), `category "${cat}" should be valid`).toBe(true);
     }
   });
