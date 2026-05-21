@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { StaleServerBadge } from "../StaleServerBadge";
 import type { QualityStatus } from "@mcpfind/shared";
@@ -126,19 +126,24 @@ describe("StaleServerBadge — all non-STALE statuses are hidden", () => {
 // F5: Real DOM render tests — XSS defense and WCAG id uniqueness
 // ---------------------------------------------------------------------------
 
+const TOOLTIP_TEXT =
+  "Last commit > 12 months ago. Verify this server is still maintained before adopting.";
+
 describe("StaleServerBadge DOM render — XSS defense", () => {
-  it("never uses dangerouslySetInnerHTML (XSS defense)", () => {
+  it("tooltip text matches TOOLTIP_TEXT constant exactly (no dynamic content)", () => {
     const { container } = render(<StaleServerBadge qualityStatus="STALE" />);
-    // React strips dangerouslySetInnerHTML from the DOM, so if it were used,
-    // the rendered HTML would contain the injected raw HTML. Assert it doesn't.
-    expect(container.innerHTML).not.toContain("dangerouslySetInnerHTML");
-    expect(
-      screen.getByRole("button", { name: /may be outdated/i })
-    ).toBeInTheDocument();
+    // Trigger hover to make tooltip visible
+    const button = screen.getByRole("button", { name: /may be outdated/i });
+    fireEvent.mouseEnter(button);
+    const tooltip = screen.getByRole("tooltip");
+    // Exact match: tooltip must be static constant, not dynamic server data
+    expect(tooltip.textContent).toBe(TOOLTIP_TEXT);
   });
 
-  it("does not render script tags or event handlers in DOM output", () => {
+  it("tooltip DOM contains no script tags or event handlers (XSS defense)", () => {
     const { container } = render(<StaleServerBadge qualityStatus="STALE" />);
+    const button = screen.getByRole("button", { name: /may be outdated/i });
+    fireEvent.mouseEnter(button);
     expect(container.innerHTML).not.toContain("<script");
     expect(container.innerHTML).not.toContain("onerror=");
     expect(container.innerHTML).not.toContain("javascript:");

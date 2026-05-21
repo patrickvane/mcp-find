@@ -10,16 +10,11 @@
  * assertValidQualityStatus().
  */
 
+import { QUALITY_STATUS_VALUES } from '@mcpfind/shared';
 import type { QualityStatus } from '@mcpfind/shared';
 import qualityStatusMapRaw from '../data/quality-status-map.json';
 
-/** All valid quality_status values. Order mirrors severity (best → worst). */
-export const QUALITY_STATUS_VALUES: readonly QualityStatus[] = [
-  'HEALTHY',
-  'STALE',
-  'LOW-CREDIBILITY',
-  'BROKEN',
-] as const;
+export { QUALITY_STATUS_VALUES };
 
 /**
  * Build-time assertion: throws if `value` is not a valid QualityStatus.

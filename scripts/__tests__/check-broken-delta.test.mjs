@@ -5,13 +5,17 @@
  * This file IS picked up by `pnpm test` in apps/web.
  * The web vitest config (apps/web/vitest.config.ts) includes "../../scripts/__tests__/**\/*.test.mjs"
  * so this test runs as part of the standard test suite.
+ *
+ * F4: Tests write to temp files instead of production paths. If the process is
+ * SIGKILL'd between mutation and afterEach cleanup, production is untouched.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,9 +25,17 @@ const repoRoot = join(__dirname, "..", "..");
 const realMapPath = join(repoRoot, "apps", "web", "data", "quality-status-map.json");
 const realSnapshotPath = join(repoRoot, ".build-state", "broken-count.json");
 
-function runScript() {
+let tempDir;
+let tempMapPath;
+let tempSnapshotPath;
+
+function runScript(mapPath, snapshotPath) {
   try {
-    const stdout = execFileSync(process.execPath, [scriptPath], { encoding: "utf-8" });
+    const stdout = execFileSync(
+      process.execPath,
+      [scriptPath, "--map-path", mapPath, "--state-path", snapshotPath],
+      { encoding: "utf-8" },
+    );
     return { exitCode: 0, output: stdout };
   } catch (err) {
     return { exitCode: err.status ?? 1, output: (err.stderr ?? "") + (err.message ?? "") };
@@ -31,44 +43,44 @@ function runScript() {
 }
 
 describe("check-broken-delta.mjs smoke tests", () => {
-  let originalMap;
-  let originalSnapshot;
-
   beforeEach(() => {
-    originalMap = readFileSync(realMapPath, "utf-8");
-    originalSnapshot = readFileSync(realSnapshotPath, "utf-8");
+    // Create a fresh temp dir for this test; copy production files into it
+    tempDir = mkdtempSync(join(tmpdir(), "check-broken-delta-test-"));
+    tempMapPath = join(tempDir, "quality-status-map.json");
+    tempSnapshotPath = join(tempDir, "broken-count.json");
+    writeFileSync(tempMapPath, readFileSync(realMapPath, "utf-8"));
+    writeFileSync(tempSnapshotPath, readFileSync(realSnapshotPath, "utf-8"));
   });
 
   afterEach(() => {
-    // Always restore originals so subsequent tests / builds are unaffected
-    writeFileSync(realMapPath, originalMap);
-    writeFileSync(realSnapshotPath, originalSnapshot);
+    // Clean up temp dir; SIGKILL between mutation and here leaves production untouched
+    try { rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
   });
 
   it("passes with current real data (baseline sanity)", () => {
-    const result = runScript();
+    const result = runScript(tempMapPath, tempSnapshotPath);
     expect(result.exitCode).toBe(0);
   });
 
   it("exits 1 when BROKEN entries spike by >20 above snapshot (absolute threshold)", () => {
-    const map = JSON.parse(originalMap);
+    const map = JSON.parse(readFileSync(tempMapPath, "utf-8"));
     // Inject 30 extra BROKEN entries — guaranteed to exceed the absolute threshold of 20
     for (let i = 0; i < 30; i++) {
       map[`__test-poison-broken-${i}__`] = "BROKEN";
     }
-    writeFileSync(realMapPath, JSON.stringify(map));
+    writeFileSync(tempMapPath, JSON.stringify(map));
 
-    const result = runScript();
+    const result = runScript(tempMapPath, tempSnapshotPath);
     expect(result.exitCode, `stderr: ${result.output}`).toBe(1);
     expect(result.output).toMatch(/exceeds safety threshold/i);
   });
 
   it("exits 1 when map contains an invalid status value (closed-enum check)", () => {
-    const map = JSON.parse(originalMap);
+    const map = JSON.parse(readFileSync(tempMapPath, "utf-8"));
     map["__test-invalid-status__"] = "UNKNOWN_STATUS";
-    writeFileSync(realMapPath, JSON.stringify(map));
+    writeFileSync(tempMapPath, JSON.stringify(map));
 
-    const result = runScript();
+    const result = runScript(tempMapPath, tempSnapshotPath);
     expect(result.exitCode, `stderr: ${result.output}`).toBe(1);
     expect(result.output).toMatch(/invalid quality_status/i);
   });

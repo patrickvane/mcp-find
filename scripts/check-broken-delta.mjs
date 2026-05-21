@@ -25,8 +25,17 @@ const __dirname = dirname(__filename);
 
 // Resolve paths relative to repo root (scripts/ is at repo root level)
 const repoRoot = join(__dirname, '..');
-const mapPath = join(repoRoot, 'apps', 'web', 'data', 'quality-status-map.json');
-const snapshotPath = join(repoRoot, '.build-state', 'broken-count.json');
+
+// CLI flags: --map-path <path> and --state-path <path> override defaults.
+// Defaults are left unchanged so production prebuild works without arguments.
+const args = process.argv.slice(2);
+function getFlagValue(flag) {
+  const idx = args.indexOf(flag);
+  return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : null;
+}
+
+const mapPath = getFlagValue('--map-path') ?? join(repoRoot, 'apps', 'web', 'data', 'quality-status-map.json');
+const snapshotPath = getFlagValue('--state-path') ?? join(repoRoot, '.build-state', 'broken-count.json');
 
 // --- Load quality-status-map.json ---
 let qualityMap;
