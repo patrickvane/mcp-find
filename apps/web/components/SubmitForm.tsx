@@ -3,118 +3,48 @@
 import { useState, type FormEvent } from "react";
 import { IconBrandGithub, IconArrowUpRight } from "@tabler/icons-react";
 import { CATEGORIES, CATEGORY_LABELS } from "@mcpfind/shared";
-import type { Category } from "@mcpfind/shared";
-
-interface FormFields {
-  name: string;
-  github_url: string;
-  package_name: string;
-  description: string;
-  package_type: "npm" | "pypi" | "docker" | "";
-  category: Category | "";
-}
-
-interface FormErrors {
-  name?: string;
-  github_url?: string;
-  package_name?: string;
-  description?: string;
-  category?: string;
-}
-
-// Fix #9: type-guard for package_type
-const PACKAGE_TYPES = ["npm", "pypi", "docker", ""] as const;
-type PackageType = (typeof PACKAGE_TYPES)[number];
-function isPackageType(v: string): v is PackageType {
-  return (PACKAGE_TYPES as readonly string[]).includes(v);
-}
-
-// Fix #9: type-guard for category
-const VALID_CATEGORIES: readonly string[] = CATEGORIES;
-function isCategory(v: string): v is Category {
-  return VALID_CATEGORIES.includes(v);
-}
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function buildYaml(fields: FormFields): string {
-  const lines: string[] = ["servers:"];
-  lines.push(`  - name: ${JSON.stringify(fields.name)}`);
-  lines.push(`    github_url: ${JSON.stringify(fields.github_url)}`);
-  lines.push(`    package_name: ${JSON.stringify(fields.package_name)}`);
-  lines.push(`    description: ${JSON.stringify(fields.description)}`);
-  if (fields.package_type) {
-    lines.push(`    package_type: ${JSON.stringify(fields.package_type)}`);
-  }
-  if (fields.category) {
-    lines.push(`    category: ${JSON.stringify(fields.category)}`);
-  }
-  return lines.join("\n") + "\n";
-}
-
-function validate(fields: FormFields): FormErrors {
-  const errors: FormErrors = {};
-
-  if (!fields.name.trim()) {
-    errors.name = "Server name is required.";
-  } else if (!toSlug(fields.name)) {
-    // Fix 3: empty-slug guard moved into validate() so hasErrors reflects it
-    errors.name = "Name must contain at least one letter or number.";
-  }
-
-  if (!fields.github_url.trim()) {
-    errors.github_url = "GitHub URL is required.";
-  } else if (
-    // Fix #5: tighter GitHub URL regex (requires org/repo segments)
-    // Fix 2: anchored regex — rejects trailing garbage, allows deep links
-    !/^https:\/\/github\.com\/[^/]+\/[^/?#]+(?:[/?#].*)?$/.test(fields.github_url.trim())
-  ) {
-    errors.github_url =
-      "Must be a full GitHub repo URL (e.g. https://github.com/org/repo)";
-  }
-
-  if (!fields.package_name.trim()) {
-    errors.package_name = "Package name is required.";
-  }
-
-  if (!fields.description.trim()) {
-    errors.description = "Description is required.";
-  } else if (fields.description.trim().length < 20) {
-    errors.description = "Description must be at least 20 characters.";
-  }
-
-  if (!fields.category) {
-    errors.category = "Please select a category.";
-  }
-
-  return errors;
-}
+import {
+  type FormFields,
+  type FormErrors,
+  isPackageType,
+  isCategory,
+  toSlug,
+  buildYaml,
+  validate,
+} from "@/lib/submit-helpers";
 
 const INPUT_BASE =
   "w-full bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 rounded-xl px-4 py-3 text-sm outline-none transition-colors duration-150 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50";
 const INPUT_ERROR = "border-red-500/60 focus:border-red-500 focus:ring-red-500/30";
 
-export function SubmitForm() {
-  const [fields, setFields] = useState<FormFields>({
-    name: "",
-    github_url: "",
-    package_name: "",
-    description: "",
-    package_type: "",
-    category: "",
-  });
+const INITIAL_FIELDS: FormFields = {
+  name: "",
+  github_url: "",
+  package_name: "",
+  description: "",
+  package_type: "",
+  category: "",
+};
 
+export function SubmitForm() {
+  const [fields, setFields] = useState<FormFields>(INITIAL_FIELDS);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<keyof FormFields>>(new Set());
   // Fix #6: submitted state for button disable UX
   const [submitted, setSubmitted] = useState(false);
   // Fix #3: popup-blocker fallback URL
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+  // Success state: shown after window.open succeeds
+  const [success, setSuccess] = useState(false);
+
+  function handleReset() {
+    setFields(INITIAL_FIELDS);
+    setErrors({});
+    setTouched(new Set());
+    setSubmitted(false);
+    setFallbackUrl(null);
+    setSuccess(false);
+  }
 
   function setField<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -167,11 +97,35 @@ export function SubmitForm() {
 
     // Fix #3 & #10: noopener,noreferrer + popup-blocker fallback
     const win = window.open(url, "_blank", "noopener,noreferrer");
-    if (!win) setFallbackUrl(url);
+    if (win) {
+      setSuccess(true);
+    } else {
+      setFallbackUrl(url);
+    }
   }
 
   const activeErrors = validate(fields);
   const hasErrors = Object.keys(activeErrors).length > 0;
+
+  if (success) {
+    return (
+      <div className="rounded-xl border border-blue-700/40 bg-blue-950/30 p-6 text-center space-y-4">
+        <h3 className="text-lg font-medium text-blue-200">
+          Thanks! Your submission is open in a new tab.
+        </h3>
+        <p className="text-sm text-blue-200/80">
+          Complete the PR on GitHub to add your server to the directory. We&apos;ll review it within a few days.
+        </p>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl transition-colors duration-200 text-base"
+        >
+          Submit another
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
