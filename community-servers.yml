@@ -16,3 +16,8 @@ servers:
     description: "X and Twitter automation MCP server for tweet search, profile tweets, follower export, media workflows, webhooks, and confirmation-gated posting."
     package_type: "npm"
     category: "communication"
+  - name: "Amber"
+    github_url: "https://github.com/ambermem/amber"
+    package_name: "amber"
+    description: "Long-term memory for AI assistants. Hybrid retrieval with LLM-powered fact chunking, multi-variant embedding, query expansion, and automatic topic categorization."
+    category: "productivity"
