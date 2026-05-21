@@ -48,7 +48,7 @@ Never duplicate type definitions — always import from `@mcpfind/shared`.
 
 ```bash
 # Clone
-git clone https://github.com/gusmar2017/mcp-find.git
+git clone https://github.com/MCPFind/mcp-find.git
 cd mcp-find
 
 # Install dependencies (all workspaces)

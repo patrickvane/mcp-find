@@ -607,7 +607,7 @@ export default async function HomePage() {
                 "@id": `${SITE_URL}/#organization`,
                 "name": "MCP Find",
                 "url": SITE_URL,
-                "sameAs": ["https://github.com/gusmar2017/mcp-find", "https://x.com/mcpfind"],
+                "sameAs": ["https://github.com/MCPFind/mcp-find", "https://x.com/mcpfind"],
               },
               {
                 "@type": "WebSite",

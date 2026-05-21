@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_URL, SITE_NAME, CATEGORIES, CATEGORY_LABELS } from "@mcpfind/shared";
-import type { Category } from "@mcpfind/shared";
+import { SITE_URL, SITE_NAME } from "@mcpfind/shared";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import {
@@ -8,8 +7,8 @@ import {
   IconSparkles,
   IconShieldCheck,
   IconRocket,
-  IconArrowUpRight,
 } from "@tabler/icons-react";
+import { SubmitForm } from "@/components/SubmitForm";
 
 export const metadata: Metadata = {
   title: `Submit Your MCP Server | ${SITE_NAME}`,
@@ -68,102 +67,44 @@ export default function SubmitPage() {
 
         {/* How to submit */}
         <div className="rounded-xl bg-neutral-900 border border-neutral-800 p-6 mb-8">
-          <h2 className="text-lg font-bold text-white mb-3">How to submit</h2>
-          <p className="text-neutral-400 text-sm leading-relaxed mb-4">
-            MCP Find is open source and community-driven. To submit your server,
-            open a pull request adding your server to the{" "}
+          <h2 className="text-lg font-bold text-white mb-3">How it works</h2>
+          <p className="text-neutral-400 text-sm leading-relaxed mb-1">
+            Fill in the form below and click <strong className="text-white">Open GitHub Editor</strong>.
+            Your data will be prefilled in GitHub&apos;s web editor as a new{" "}
             <code className="text-blue-400 bg-neutral-800 px-1.5 py-0.5 rounded font-mono text-xs">
-              community-servers.yml
+              submissions/your-server.yml
             </code>{" "}
-            file in our GitHub repository.
+            file. GitHub will guide you through forking the repo and opening a pull request — no
+            local Git setup required.
           </p>
-          <a
-            href="https://github.com/gusmar2017/mcp-find/blob/main/community-servers.yml"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors duration-200 text-sm"
-          >
-            <IconBrandGithub size={16} />
-            View community-servers.yml
-            <IconArrowUpRight size={14} />
-          </a>
+          <p className="text-neutral-500 text-xs mt-3">
+            Prefer to edit manually?{" "}
+            <Link
+              href="https://github.com/MCPFind/mcp-find/blob/main/CONTRIBUTING.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-400 hover:text-white transition-colors duration-200 underline underline-offset-2"
+            >
+              Read the contributing guide
+            </Link>
+            .
+          </p>
         </div>
 
-        {/* Form fields for reference */}
+        {/* Functional form */}
         <div className="space-y-6">
-          <h2 className="text-lg font-bold text-white">Required fields</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Server Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. My Awesome MCP Server"
-                disabled
-                className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-600 placeholder-neutral-700 rounded-xl px-4 py-3 text-sm outline-none cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">
-                GitHub Repository URL
-              </label>
-              <input
-                type="url"
-                placeholder="https://github.com/org/repo"
-                disabled
-                className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-600 placeholder-neutral-700 rounded-xl px-4 py-3 text-sm outline-none cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Short Description
-              </label>
-              <input
-                type="text"
-                placeholder="One sentence description of what your server does"
-                disabled
-                className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-600 placeholder-neutral-700 rounded-xl px-4 py-3 text-sm outline-none cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Category
-              </label>
-              <select
-                disabled
-                className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-600 rounded-xl px-4 py-3 text-sm outline-none cursor-not-allowed"
-              >
-                <option value="">Select a category...</option>
-                {CATEGORIES.map((cat: string) => (
-                  <option key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat as Category]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <a
-            href="https://github.com/gusmar2017/mcp-find/blob/main/CONTRIBUTING.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl transition-colors duration-200 text-base"
-          >
-            <IconBrandGithub size={18} />
-            Submit via GitHub PR
-            <IconArrowUpRight size={16} />
-          </a>
+          <h2 className="text-lg font-bold text-white">Your server details</h2>
+          <SubmitForm />
           <p className="text-center text-neutral-600 text-xs">
             By submitting you agree that your server meets our{" "}
-            <a
-              href="https://github.com/gusmar2017/mcp-find/blob/main/CONTRIBUTING.md"
+            <Link
+              href="https://github.com/MCPFind/mcp-find/blob/main/CONTRIBUTING.md"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-400 hover:text-white transition-colors duration-200"
             >
               community guidelines
-            </a>
+            </Link>
             .
           </p>
         </div>
